@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<script src="mraid.js"></script>
+<script>
+// MRAID init — waits for SDK to be ready before showing ad
+(function() {
+  function init() {
+    if (typeof mraid === 'undefined') return;
+    if (mraid.getState() === 'loading') {
+      mraid.addEventListener('ready', onReady);
+    } else {
+      onReady();
+    }
+  }
+  function onReady() {
+    mraid.addEventListener('viewableChange', function(v) {
+      if (v) document.getElementById('screen-hook').style.display = 'flex';
+    });
+    if (mraid.isViewable()) {
+      document.getElementById('screen-hook').style.display = 'flex';
+    }
+  }
+  init();
+})();
+</script>
+<title>Nike Court — Padel Playable Ad</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --nike-black: #111;
+  --nike-white: #F5F5F0;
+  --nike-lime: #C8E63A;
+  --nike-gray: #888;
+  --court-green: #3A7D44;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#ad {
+  width: 390px;
+  height: 700px;
+  max-width: 100vw;
+  max-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: var(--nike-black);
+  border-radius: 20px;
+}
+
+/* On real phones — fill the whole screen, no rounded corners */
+@media (max-width: 480px) {
+  #ad {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+}
+
+/* HOOK */
+#screen-hook {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 48px;
+  z-index: 10;
+}
+.hook-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #1a1a1a 0%, #2d5a34 55%, #1e3d22 100%);
+}
+.hook-lines {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+}
+.swoosh-top {
+  position: absolute;
+  top: 28px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+.swoosh-top svg { width: 56px; height: 22px; fill: #fff; }
+.float-item {
+  position: absolute;
+  font-size: 38px;
+  animation: floatA 3s ease-in-out infinite;
+  z-index: 3;
+}
+@keyframes floatA {
+  0%,100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-10px) rotate(4deg); }
+}
+.hook-title {
+  position: relative;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 64px;
+  line-height: 0.9;
+  color: #F5F5F0;
+  text-align: center;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+  z-index: 4;
+}
+.hook-title span { color: var(--nike-lime); }
+.hook-sub {
+  position: relative;
+  font-size: 13px;
+  color: rgba(255,255,255,0.55);
+  text-align: center;
+  margin-bottom: 28px;
+  z-index: 4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.btn-start {
+  position: relative;
+  z-index: 4;
+  background: var(--nike-lime);
+  color: #111;
+  border: none;
+  border-radius: 40px;
+  padding: 16px 48px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(200,230,58,0.45); }
+  50%      { transform: scale(1.04); box-shadow: 0 0 0 14px rgba(200,230,58,0); }
+}
+
+/* GAME */
+#screen-game {
+  position: absolute;
+  inset: 0;
+  display: none;
+  z-index: 10;
+}
+#gameCanvas { display: block; }
+
+.hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  z-index: 20;
+  background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, transparent 100%);
+  pointer-events: none;
+}
+.hud-score {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: #F5F5F0;
+  letter-spacing: 0.05em;
+}
+.hud-score span { color: var(--nike-lime); }
+.hud-balls { display: flex; gap: 6px; align-items: center; }
+.ball-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--nike-lime);
+  transition: opacity 0.3s;
+}
+.ball-dot.used { opacity: 0.2; background: var(--nike-gray); }
+
+.aim-hint {
+  position: absolute;
+  bottom: 110px;
+  right: 20px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  z-index: 20;
+  pointer-events: none;
+  text-align: right;
+  line-height: 1.6;
+  animation: fadeHint 4s ease forwards;
+}
+@keyframes fadeHint { 0%,60%{opacity:1;} 100%{opacity:0;} }
+
+/* FINGER TUTORIAL */
+.tutor-finger {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  z-index: 25;
+  pointer-events: none;
+  left: 0; top: 0;
+  filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5));
+  animation: dragGesture 2.6s ease-in-out infinite;
+  transform-origin: center;
+}
+.tutor-finger svg { width: 100%; height: 100%; display: block; }
+
+/* ghost ripple that pulses where the finger presses */
+.tutor-ripple {
+  position: absolute;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(200,230,58,0.7);
+  z-index: 24;
+  pointer-events: none;
+  left: 0; top: 0;
+  animation: ripplePulse 2.6s ease-in-out infinite;
+}
+
+@keyframes dragGesture {
+  /* start: finger at the slingshot ball */
+  0%   { transform: translate(270px, 540px) scale(1);   opacity: 0; }
+  10%  { transform: translate(270px, 540px) scale(0.85); opacity: 1; }
+  /* drag back-down-right (loading the sling) */
+  45%  { transform: translate(325px, 600px) scale(0.85); opacity: 1; }
+  60%  { transform: translate(325px, 600px) scale(0.85); opacity: 1; }
+  /* release — finger lifts */
+  70%  { transform: translate(325px, 600px) scale(1);    opacity: 1; }
+  80%  { transform: translate(325px, 600px) scale(1);    opacity: 0; }
+  100% { transform: translate(270px, 540px) scale(1);    opacity: 0; }
+}
+@keyframes ripplePulse {
+  0%   { transform: translate(248px, 518px) scale(0.4); opacity: 0; }
+  10%  { transform: translate(248px, 518px) scale(0.6); opacity: 0.9; }
+  45%  { transform: translate(303px, 578px) scale(1);   opacity: 0.6; }
+  60%  { transform: translate(303px, 578px) scale(1.1); opacity: 0.3; }
+  70%  { transform: translate(303px, 578px) scale(1.4); opacity: 0; }
+  100% { opacity: 0; }
+}
+.tutor-hide { display: none !important; }
+
+/* WIN */
+#screen-win {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  background: var(--nike-black);
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+/* every direct child stays in a narrow mobile column, centered */
+#screen-win > * {
+  width: 100%;
+  max-width: 340px;
+}
+.win-swoosh { margin-bottom: 10px; flex-shrink: 0; display: flex; justify-content: center; }
+.win-swoosh svg { width: 56px; height: 22px; fill: var(--nike-lime); }
+.win-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 46px;
+  color: #F5F5F0;
+  line-height: 0.95;
+  text-align: center;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.win-title span { color: var(--nike-lime); }
+.win-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 18px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.outfit-reveal {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 18px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.outfit-piece {
+  width: 76px;
+  height: 84px;
+  background: #1c1c1c;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) backwards;
+}
+.outfit-piece:nth-child(1){animation-delay:.1s}
+.outfit-piece:nth-child(2){animation-delay:.2s}
+.outfit-piece:nth-child(3){animation-delay:.3s}
+.outfit-piece:nth-child(4){animation-delay:.4s}
+@keyframes popIn {
+  0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+.piece-icon { font-size: 26px; }
+.piece-name { font-size: 9px; color: var(--nike-gray); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+.discount-card {
+  background: var(--nike-lime);
+  border-radius: 16px;
+  padding: 18px 24px;
+  text-align: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+.d-label  { font-size: 10px; font-weight: 700; color: rgba(0,0,0,0.45); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.d-code   { font-family: 'Bebas Neue', sans-serif; font-size: 44px; color: #111; letter-spacing: 0.1em; line-height: 1; margin-bottom: 3px; }
+.d-value  { font-size: 12px; color: rgba(0,0,0,0.55); font-weight: 500; }
+.btn-shop {
+  background: #F5F5F0;
+  color: #111;
+  border: none;
+  border-radius: 40px;
+  padding: 15px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.btn-replay {
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  color: var(--nike-gray);
+  border-radius: 40px;
+  padding: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* LOSE */
+#screen-lose {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  background: rgba(0,0,0,0.93);
+  padding: 32px 24px;
+}
+.lose-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  color: #F5F5F0;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.lose-sub  { font-size: 13px; color: var(--nike-gray); text-align: center; margin-bottom: 28px; line-height: 1.5; }
+.lose-hint { background: #1c1c1c; border-radius: 12px; padding: 14px; margin-bottom: 22px; width: 100%; font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.7; text-align: center; }
+.lose-hint strong { color: var(--nike-lime); }
+</style>
+</head>
+<body>
+<div id="ad">
+
+  <!-- HOOK SCREEN -->
+  <div id="screen-hook">
+    <div class="hook-bg">
+      <svg class="hook-lines" viewBox="0 0 390 700" preserveAspectRatio="none">
+        <rect x="30" y="80" width="330" height="560" fill="none" stroke="white" stroke-width="1.5"/>
+        <line x1="30" y1="360" x2="360" y2="360" stroke="white" stroke-width="1.5"/>
+        <line x1="195" y1="80" x2="195" y2="640" stroke="white" stroke-width="1.5"/>
+        <rect x="115" y="80" width="160" height="90" fill="none" stroke="white" stroke-width="1"/>
+        <circle cx="195" cy="360" r="36" fill="none" stroke="white" stroke-width="1"/>
+      </svg>
+    </div>
+    <div class="swoosh-top">
+      <svg viewBox="0 0 120 48" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0 36 C30 0 80 -4 120 8 C80 20 40 40 0 36Z"/>
+      </svg>
+    </div>
+    <div class="float-item" style="top:115px;left:38px;animation-delay:0s">👟</div>
+    <div class="float-item" style="top:135px;right:38px;animation-delay:0.8s">🎾</div>
+    <div class="float-item" style="top:220px;left:55px;animation-delay:1.4s">👕</div>
+    <div class="float-item" style="top:195px;right:52px;animation-delay:0.4s">🩳</div>
+    <div class="hook-title">SMASH<br><span>THE FIT</span></div>
+    <div class="hook-sub">Nike Court Collection · Padel Edition</div>
+    <button class="btn-start" onclick="startGame()">Play to unlock 20% off</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="screen-game">
+    <div class="hud">
+      <div class="hud-score">HIT <span id="scoreDisplay">0</span>/4</div>
+      <div class="hud-balls" id="ballDots">
+        <div class="ball-dot"></div>
+        <div class="ball-dot"></div>
+        <div class="ball-dot"></div>
+        <div class="ball-dot"></div>
+        <div class="ball-dot"></div>
+      </div>
+    </div>
+    <canvas id="gameCanvas" width="390" height="700"></canvas>
+    <div class="tutor-ripple" id="tutorRipple"></div>
+    <div class="tutor-finger" id="tutorFinger">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <path d="M30 8 C26 8 23 11 23 15 L23 30 L20 27 C17 24 12 24 9 27 C6 30 6 35 9 38 L24 54 C27 57 31 59 36 59 L44 59 C51 59 56 54 56 47 L56 30 C56 26 53 23 49 23 C47 23 45 24 44 26 C44 22 41 19 37 19 C35 19 33 20 32 22 L32 15 C32 11 34 8 30 8 Z"
+              fill="#D8D8D8" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+  </div>
+
+  <!-- WIN SCREEN -->
+  <div id="screen-win">
+    <div class="win-swoosh">
+      <svg viewBox="0 0 120 48" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0 36 C30 0 80 -4 120 8 C80 20 40 40 0 36Z"/>
+      </svg>
+    </div>
+    <div class="win-title">FULL KIT<br><span>UNLOCKED</span></div>
+    <div class="win-sub">Nike Court · Padel Collection</div>
+    <div class="outfit-reveal">
+      <div class="outfit-piece"><span class="piece-icon">👕</span><span class="piece-name">Court Tee</span></div>
+      <div class="outfit-piece"><span class="piece-icon">🩳</span><span class="piece-name">Short</span></div>
+      <div class="outfit-piece"><span class="piece-icon">👟</span><span class="piece-name">Air Zoom</span></div>
+      <div class="outfit-piece"><span class="piece-icon">🧢</span><span class="piece-name">Cap</span></div>
+    </div>
+    <div class="discount-card">
+      <div class="d-label">Your exclusive code</div>
+      <div class="d-code">COURT20</div>
+      <div class="d-value">20% off the full Court Collection</div>
+    </div>
+    <button class="btn-shop" onclick="shopNow()">Shop the collection →</button>
+  </div>
+
+  <!-- LOSE SCREEN -->
+  <div id="screen-lose">
+    <div class="lose-title">So close!<br>Try again</div>
+    <div class="lose-sub">Hit all 4 outfit pieces<br>to unlock your 20% discount</div>
+    <div class="lose-hint"><strong>Tip:</strong> Drag further right for more power.<br>Aim for the glowing pieces on the left!</div>
+    <button class="btn-shop" style="margin-bottom:10px" onclick="replayGame()">Try again →</button>
+    <button class="btn-replay" onclick="shopNow()">Shop anyway</button>
+  </div>
+
+</div>
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+var W = 390, H = 700;
+
+// Slingshot: bottom-RIGHT corner — right thumb zone
+var SX = 270, SY = 540;
+var MAX_DRAG = 85;
+
+// Targets: LEFT side — ball shoots right-to-left
+var TARGETS_INIT = [
+  { x: 70,  y: 150, icon: '👕', name: 'Court Tee' },
+  { x: 160, y: 290, icon: '🩳', name: 'Short'     },
+  { x: 55,  y: 440, icon: '👟', name: 'Air Zoom'  },
+  { x: 170, y: 540, icon: '🧢', name: 'Cap'       }
+];
+
+var canvas, ctx;
+var state = {};
+
+function resetState() {
+  state = {
+    phase: 'idle',
+    ball: null,
+    targets: TARGETS_INIT.map(function(t) {
+      return { x:t.x, y:t.y, icon:t.icon, name:t.name, hit:false, scale:1, glow:0 };
+    }),
+    particles: [],
+    ballsLeft: 5,
+    hits: 0,
+    total: 4,
+    drag: null,       // current drag point
+    traj: []
+  };
+}
+
+// ── BOOT ────────────────────────────────────────────────
+function startGame() {
+  document.getElementById('screen-hook').style.display = 'none';
+  var sg = document.getElementById('screen-game');
+  sg.style.display = 'block';
+
+  canvas = document.getElementById('gameCanvas');
+  ctx    = canvas.getContext('2d');
+  resetState();
+  updateHUD();
+
+  canvas.addEventListener('mousedown',  onDown);
+  canvas.addEventListener('mousemove',  onMove);
+  canvas.addEventListener('mouseup',    onUp);
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+  canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+  canvas.addEventListener('touchend',   onTouchEnd);
+
+  requestAnimationFrame(loop);
+}
+
+function replayGame() {
+  document.getElementById('screen-win').style.display  = 'none';
+  document.getElementById('screen-lose').style.display = 'none';
+  document.getElementById('screen-game').style.display = 'block';
+  resetState();
+  updateHUD();
+  // re-show finger tutorial
+  var f = document.getElementById('tutorFinger');
+  var r = document.getElementById('tutorRipple');
+  if (f) f.classList.remove('tutor-hide');
+  if (r) r.classList.remove('tutor-hide');
+}
+
+function updateHUD() {
+  document.getElementById('scoreDisplay').textContent = state.hits;
+  var dots = document.getElementById('ballDots').querySelectorAll('.ball-dot');
+  dots.forEach(function(d, i) {
+    d.classList.toggle('used', i >= state.ballsLeft);
+  });
+}
+
+// ── INPUT ────────────────────────────────────────────────
+function getXY(e) {
+  var r  = canvas.getBoundingClientRect();
+  var sx = canvas.width  / r.width;
+  var sy = canvas.height / r.height;
+  return { x: (e.clientX - r.left)*sx, y: (e.clientY - r.top)*sy };
+}
+
+function onDown(e)       { tryStartDrag(getXY(e)); }
+function onMove(e)       { moveDrag(getXY(e)); }
+function onUp()          { releaseDrag(); }
+function onTouchStart(e) { e.preventDefault(); tryStartDrag(getXY(e.touches[0])); }
+function onTouchMove(e)  { e.preventDefault(); moveDrag(getXY(e.touches[0])); }
+function onTouchEnd()    { releaseDrag(); }
+
+function tryStartDrag(pos) {
+  if (state.phase !== 'idle') return;
+  var dx = pos.x - SX, dy = pos.y - SY;
+  if (Math.sqrt(dx*dx + dy*dy) < 90) {
+    state.phase = 'dragging';
+    state.drag  = { x: SX, y: SY };
+    var f = document.getElementById('tutorFinger');
+    var r = document.getElementById('tutorRipple');
+    if (f) f.classList.add('tutor-hide');
+    if (r) r.classList.add('tutor-hide');
+  }
+}
+
+function moveDrag(pos) {
+  if (state.phase !== 'dragging') return;
+  var dx = pos.x - SX, dy = pos.y - SY;
+  var d  = Math.sqrt(dx*dx + dy*dy);
+  if (d > MAX_DRAG) { dx = dx/d*MAX_DRAG; dy = dy/d*MAX_DRAG; }
+  state.drag = { x: SX+dx, y: SY+dy };
+  state.traj = previewTraj(state.drag.x, state.drag.y);
+}
+
+function releaseDrag() {
+  if (state.phase !== 'dragging') return;
+  var dx = SX - state.drag.x;
+  var dy = SY - state.drag.y;
+  var spd = 0.30;
+  state.ball = { x: state.drag.x, y: state.drag.y, vx: dx*spd, vy: dy*spd, r: 14, trail: [] };
+  state.phase = 'flying';
+  state.traj  = [];
+  state.ballsLeft = Math.max(0, state.ballsLeft - 1);
+  updateHUD();
+}
+
+function previewTraj(bx, by) {
+  var dx = SX-bx, dy = SY-by, spd = 0.30;
+  var vx = dx*spd, vy = dy*spd;
+  var px = bx, py = by, pts = [];
+  for (var i = 0; i < 35; i++) {
+    vy += 0.42; px += vx; py += vy;
+    if (i % 2 === 0) pts.push({ x:px, y:py });
+    if (py > H) break;
+  }
+  return pts;
+}
+
+// ── LOOP ─────────────────────────────────────────────────
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function update() {
+  // glow pulse
+  state.targets.forEach(function(t) {
+    if (!t.hit) t.glow = (Math.sin(Date.now()/380 + t.x*0.05) + 1) / 2;
+  });
+
+  if (state.phase === 'flying' && state.ball) {
+    var b = state.ball;
+    b.trail.push({ x:b.x, y:b.y });
+    if (b.trail.length > 12) b.trail.shift();
+    b.vy += 0.42;
+    b.x  += b.vx;
+    b.y  += b.vy;
+
+    state.targets.forEach(function(t) {
+      if (t.hit) return;
+      var dx = b.x-t.x, dy = b.y-t.y;
+      if (Math.sqrt(dx*dx+dy*dy) < 28) {
+        t.hit   = true;
+        t.scale = 1.6;
+        state.hits++;
+        updateHUD();
+        burst(t.x, t.y);
+        setTimeout(function(){ t.scale = 1; }, 280);
+      }
+    });
+
+    if (b.x < -60 || b.x > W+60 || b.y > H+60) {
+      state.ball  = null;
+      state.phase = 'idle';
+      checkEnd();
+    }
+  }
+
+  state.particles = state.particles.filter(function(p){ return p.life > 0; });
+  state.particles.forEach(function(p) {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.life -= 2; p.r *= 0.94;
+  });
+}
+
+function checkEnd() {
+  if (state.hits >= state.total) {
+    setTimeout(function(){
+      document.getElementById('screen-game').style.display = 'none';
+      document.getElementById('screen-win').style.display  = 'flex';
+    }, 500);
+    return;
+  }
+  if (state.ballsLeft <= 0) {
+    setTimeout(function(){
+      document.getElementById('screen-game').style.display = 'none';
+      document.getElementById('screen-lose').style.display = 'flex';
+    }, 500);
+  }
+}
+
+function burst(x, y) {
+  var cols = ['#C8E63A','#FF6B35','#ffffff','#C8E63A','#FFE14D'];
+  for (var i = 0; i < 22; i++) {
+    var a = (Math.PI*2/22)*i;
+    var s = 3 + Math.random()*5;
+    state.particles.push({
+      x:x, y:y,
+      vx: Math.cos(a)*s, vy: Math.sin(a)*s - 2,
+      r: 4 + Math.random()*4,
+      life: 55 + Math.random()*45,
+      color: cols[Math.floor(Math.random()*cols.length)]
+    });
+  }
+}
+
+// ── DRAW ─────────────────────────────────────────────────
+function draw() {
+  if (!ctx) return;
+
+  // background court
+  var g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,   '#1a1a1a');
+  g.addColorStop(0.28,'#2d5a34');
+  g.addColorStop(1,   '#1e3d22');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // court lines (faint)
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth   = 1.5;
+  ctx.strokeRect(30, 80, 330, 560);
+  ctx.beginPath(); ctx.moveTo(30, 360); ctx.lineTo(360, 360); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(195, 80); ctx.lineTo(195, 640); ctx.stroke();
+  ctx.strokeRect(115, 80, 160, 90);
+  ctx.beginPath(); ctx.arc(195, 360, 36, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+
+  // slingshot
+  drawSlingshot();
+
+  // trajectory preview
+  if (state.phase === 'dragging') {
+    state.traj.forEach(function(pt, i) {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 3, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(200,230,58,' + (0.75 - i*0.022) + ')';
+      ctx.fill();
+    });
+  }
+
+  // targets
+  state.targets.forEach(function(t) {
+    if (t.hit) {
+      // faded check
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.font = '24px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✓', t.x, t.y);
+      ctx.restore();
+      return;
+    }
+    ctx.save();
+    // outer glow ring
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 38 + t.glow*7, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(200,230,58,' + (0.15 + t.glow*0.35) + ')';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // box
+    ctx.fillStyle = 'rgba(24,24,24,0.88)';
+    rrect(t.x-30, t.y-30, 60, 60, 10);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(200,230,58,' + (0.25 + t.glow*0.55) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // icon
+    ctx.font = Math.round(28 * t.scale) + 'px serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(t.icon, t.x, t.y - 1);
+    // label
+    ctx.font      = '500 9px DM Sans, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(t.name, t.x, t.y + 22);
+    ctx.restore();
+  });
+
+  // ball trail
+  if (state.ball) {
+    state.ball.trail.forEach(function(pt, i) {
+      var a = i / state.ball.trail.length;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, state.ball.r * a * 0.65, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(200,230,58,' + (a*0.45) + ')';
+      ctx.fill();
+    });
+    drawBall(state.ball.x, state.ball.y, state.ball.r);
+  }
+
+  // ball on sling while dragging
+  if (state.phase === 'dragging' && state.drag) {
+    drawBall(state.drag.x, state.drag.y, 14);
+  }
+
+  // idle ball with pulse
+  if (state.phase === 'idle' && state.ballsLeft > 0) {
+    drawBall(SX, SY, 14);
+    var p = (Math.sin(Date.now()/480)+1)/2;
+    ctx.beginPath();
+    ctx.arc(SX, SY, 22 + p*9, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(200,230,58,' + (0.45 - p*0.35) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // particles
+  state.particles.forEach(function(p) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life/100);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, Math.max(0.1, p.r), 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawBall(x, y, r) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fillStyle = '#C8E63A';
+  ctx.fill();
+  ctx.strokeStyle = '#9ab82a';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // seam
+  ctx.beginPath();
+  ctx.arc(x, y, r*0.68, 0.3, Math.PI-0.3);
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSlingshot() {
+  ctx.save();
+  ctx.strokeStyle = '#5a3a1a';
+  ctx.lineWidth   = 9;
+  ctx.lineCap     = 'round';
+  // fork arms
+  ctx.beginPath(); ctx.moveTo(SX, SY+28); ctx.lineTo(SX-20, SY-22); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(SX, SY+28); ctx.lineTo(SX+20, SY-22); ctx.stroke();
+  // handle
+  ctx.beginPath(); ctx.moveTo(SX, SY+28); ctx.lineTo(SX, SY+68); ctx.stroke();
+
+  // rubber bands
+  ctx.strokeStyle = '#8B6914';
+  ctx.lineWidth   = 2.5;
+  var bx = (state.phase==='dragging' && state.drag) ? state.drag.x : SX;
+  var by = (state.phase==='dragging' && state.drag) ? state.drag.y : SY;
+  ctx.beginPath(); ctx.moveTo(SX-20, SY-22); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(SX+20, SY-22); ctx.lineTo(bx, by); ctx.stroke();
+
+  // NIKE label
+  ctx.font      = '700 11px DM Sans, sans-serif';
+  ctx.fillStyle = 'rgba(200,230,58,0.65)';
+  ctx.textAlign = 'center';
+  ctx.fillText('NIKE', SX, SY+86);
+  ctx.restore();
+}
+
+function rrect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h);
+  ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r);
+  ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+
+function shopNow() {
+  var url = 'https://nike.com/court';
+  if (typeof mraid !== 'undefined') {
+    mraid.open(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+</script>
+</body>
+</html>
